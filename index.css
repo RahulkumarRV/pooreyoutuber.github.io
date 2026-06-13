@@ -724,3 +724,36 @@ footer {
     text-align: center;
   }
 }
+
+/* Ad Layout Utilities */
+.ad-wrapper-top {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 32px;
+  min-height: 90px;
+}
+.ad-wrapper-bottom {
+  display: flex;
+  justify-content: center;
+  margin: 48px 0;
+  min-height: 250px;
+}
+.ad-desktop {
+  display: block;
+}
+.ad-mobile {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .ad-wrapper-top {
+    min-height: 50px;
+  }
+  .ad-desktop {
+    display: none;
+  }
+  .ad-mobile {
+    display: block;
+  }
+}
+
