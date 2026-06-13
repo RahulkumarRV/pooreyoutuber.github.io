@@ -1,16 +1,18 @@
 /* ==========================================================================
-   pooreyoutuber.github.io - Interaction & Logic Layer
+   pooreyoutuber.github.io - Multi-Streamer JavaScript Engine
    ========================================================================== */
+
+// Global State
+let inputCount = 1;
+let activePlayers = [];
+let ytApiLoaded = false;
 
 document.addEventListener('DOMContentLoaded', () => {
   initCopyrightYear();
-  initMobileMenu();
-  initHeaderScroll();
-  initVideoTabs();
-  initScrollAnimations();
-  initStatsCounters();
-  initVideoModal();
-  initNewsletterForm();
+  initDynamicInputs();
+  bootstrapYoutubeAPI();
+  initFormSubmit();
+  initMuteSync();
 });
 
 /**
@@ -24,295 +26,261 @@ function initCopyrightYear() {
 }
 
 /**
- * 2. Mobile Menu Navigation Drawer Toggle
+ * 2. Bootstrap YouTube IFrame API Asynchronously
  */
-function initMobileMenu() {
-  const menuToggle = document.getElementById('menu-toggle');
-  const navMenu = document.getElementById('nav-menu');
-  const navLinks = document.querySelectorAll('.nav-link');
-
-  if (menuToggle && navMenu) {
-    menuToggle.addEventListener('click', () => {
-      navMenu.classList.toggle('active');
-      
-      // Accessibility state toggle
-      const isExpanded = navMenu.classList.contains('active');
-      menuToggle.setAttribute('aria-expanded', isExpanded);
-    });
-
-    // Close menu when clicking a link
-    navLinks.forEach(link => {
-      link.addEventListener('click', () => {
-        navMenu.classList.remove('active');
-        menuToggle.setAttribute('aria-expanded', 'false');
-      });
-    });
-  }
+function bootstrapYoutubeAPI() {
+  const tag = document.createElement('script');
+  tag.src = "https://www.youtube.com/iframe_api";
+  const firstScriptTag = document.getElementsByTagName('script')[0];
+  firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 }
 
-/**
- * 3. Header Scroll Visual Switch
- */
-function initHeaderScroll() {
-  const header = document.getElementById('main-header');
-  
-  const handleScroll = () => {
-    if (window.scrollY > 50) {
-      header.classList.add('scrolled');
-    } else {
-      header.classList.remove('scrolled');
-    }
-  };
-
-  window.addEventListener('scroll', handleScroll);
-  handleScroll(); // Trigger initial state
-}
+// Called automatically by the YouTube API script once loaded
+window.onYouTubeIframeAPIReady = function() {
+  ytApiLoaded = true;
+  console.log("YouTube IFrame Player API successfully loaded.");
+};
 
 /**
- * 4. Video Grid Tab Filters
+ * 3. Dynamic Inputs Management (Add/Remove Rows)
  */
-function initVideoTabs() {
-  const tabButtons = document.querySelectorAll('.tab-btn');
-  const videoCards = document.querySelectorAll('.video-card');
+function initDynamicInputs() {
+  const container = document.getElementById('inputs-container');
+  const addBtn = document.getElementById('add-input-btn');
 
-  tabButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      // Toggle active classes on tabs
-      tabButtons.forEach(t => t.classList.remove('active'));
-      btn.classList.add('active');
+  if (!container || !addBtn) return;
 
-      const filterValue = btn.getAttribute('data-tab');
-
-      // Filter video cards
-      videoCards.forEach(card => {
-        const category = card.getAttribute('data-category');
-        
-        if (filterValue === 'all' || category === filterValue) {
-          card.style.display = 'flex';
-          // Force a slight delay to trigger transitions
-          setTimeout(() => {
-            card.style.opacity = '1';
-            card.style.transform = 'translateY(0)';
-          }, 50);
-        } else {
-          card.style.opacity = '0';
-          card.style.transform = 'translateY(20px)';
-          setTimeout(() => {
-            card.style.display = 'none';
-          }, 300); // match CSS duration
-        }
-      });
-    });
-  });
-}
-
-/**
- * 5. Scroll Animations (Reveal Elements) & Active Navigation Linking
- */
-function initScrollAnimations() {
-  const revealElements = document.querySelectorAll('.reveal');
-  const sections = document.querySelectorAll('section');
-  const navLinks = document.querySelectorAll('.nav-link');
-
-  // Intersection Observer for scroll-reveal
-  const revealObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('active');
-        // Unobserve once revealed to maintain state
-        revealObserver.unobserve(entry.target);
-      }
-    });
-  }, {
-    threshold: 0.15,
-    rootMargin: '0px 0px -50px 0px'
-  });
-
-  revealElements.forEach(el => revealObserver.observe(el));
-
-  // Scroll spy to highlight current active section link
-  const scrollSpyObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        const activeId = entry.target.getAttribute('id');
-        navLinks.forEach(link => {
-          if (link.getAttribute('href') === `#${activeId}`) {
-            link.classList.add('active');
-          } else {
-            link.classList.remove('active');
-          }
-        });
-      }
-    });
-  }, {
-    threshold: 0.5 // trigger when section occupies 50% of viewport
-  });
-
-  sections.forEach(sec => scrollSpyObserver.observe(sec));
-}
-
-/**
- * 6. Interactive Stats Counters (Count-up Animation)
- */
-function initStatsCounters() {
-  const counters = document.querySelectorAll('.stat-number');
-  
-  const animateCounter = (counter) => {
-    const target = parseInt(counter.getAttribute('data-target'), 10);
-    const duration = 2000; // 2 seconds
-    const stepTime = 16; // Approx 60 FPS
-    const steps = duration / stepTime;
-    const increment = target / steps;
-    let current = 0;
-
-    const updateCount = () => {
-      current += increment;
-      if (current >= target) {
-        counter.textContent = formatNumber(target);
-      } else {
-        counter.textContent = formatNumber(Math.floor(current));
-        requestAnimationFrame(updateCount);
-      }
-    };
+  addBtn.addEventListener('click', () => {
+    inputCount++;
     
-    updateCount();
-  };
+    // Create new input item structure
+    const newRow = document.createElement('div');
+    newRow.className = 'input-item';
+    newRow.id = `input-row-${inputCount}`;
+    
+    newRow.innerHTML = `
+      <span class="input-number">${inputCount}</span>
+      <div class="input-wrapper">
+        <input type="url" class="url-input" placeholder="Paste YouTube Video URL (e.g., https://www.youtube.com/watch?v=dQw4w9WgXcQ)" required aria-label="YouTube URL ${inputCount}">
+      </div>
+      <button type="button" class="delete-btn" aria-label="Remove URL ${inputCount}">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          <line x1="10" y1="11" x2="10" y2="17"></line>
+          <line x1="14" y1="11" x2="14" y2="17"></line>
+        </svg>
+      </button>
+    `;
+    
+    container.appendChild(newRow);
+    
+    // Bind delete event to the new button
+    const deleteBtn = newRow.querySelector('.delete-btn');
+    deleteBtn.addEventListener('click', () => removeInputRow(newRow.id));
+    
+    updateRowNumbers();
+  });
+}
 
-  // Helper to format values: 150000 -> 150K, 12400000 -> 12.4M
-  const formatNumber = (num) => {
-    if (num >= 1000000) {
-      return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
-    }
-    if (num >= 1000) {
-      return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
-    }
-    return num.toString();
-  };
+function removeInputRow(rowId) {
+  const row = document.getElementById(rowId);
+  if (row) {
+    row.remove();
+    updateRowNumbers();
+  }
+}
 
-  // Trigger counters when stats section is visible
-  const statsSection = document.getElementById('stats');
-  if (statsSection) {
-    const counterObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          counters.forEach(counter => animateCounter(counter));
-          counterObserver.unobserve(statsSection);
+// Re-index row indicators and update visibility of delete buttons
+function updateRowNumbers() {
+  const container = document.getElementById('inputs-container');
+  const rows = container.querySelectorAll('.input-item');
+  
+  rows.forEach((row, idx) => {
+    const num = idx + 1;
+    row.querySelector('.input-number').textContent = num;
+    row.querySelector('input').setAttribute('aria-label', `YouTube URL ${num}`);
+    
+    const deleteBtn = row.querySelector('.delete-btn');
+    deleteBtn.setAttribute('aria-label', `Remove URL ${num}`);
+    
+    // Hide delete button if there's only 1 row left
+    if (rows.length === 1) {
+      deleteBtn.style.display = 'none';
+    } else {
+      deleteBtn.style.display = 'flex';
+    }
+  });
+  
+  // Re-sync inputCount to current list length
+  inputCount = rows.length;
+}
+
+/**
+ * 4. Parse YouTube Video ID from standard and non-standard URL formats
+ */
+function extractYoutubeId(url) {
+  url = url.trim();
+  
+  // Direct 11-char ID matching
+  if (url.length === 11 && !url.includes('/') && !url.includes('.')) {
+    return url;
+  }
+  
+  // Standard Youtube URL parsing regex
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|shorts\/)([^#\&\?]*).*/;
+  const match = url.match(regExp);
+  
+  return (match && match[2].length === 11) ? match[2] : null;
+}
+
+/**
+ * 5. Initialize/Rebuild Stream Grid on Form Submission
+ */
+function initFormSubmit() {
+  const form = document.getElementById('stream-builder-form');
+  const gridContainer = document.getElementById('grid-container');
+  const emptyState = document.getElementById('empty-state');
+  const badge = document.getElementById('workspace-badge');
+
+  if (!form || !gridContainer || !emptyState) return;
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+
+    // Ensure YouTube API is fully initialized
+    if (!ytApiLoaded) {
+      alert("YouTube player library is still loading. Please try again in a second.");
+      return;
+    }
+
+    // Clean up existing players
+    destroyActivePlayers();
+
+    // Collect all values
+    const inputs = document.querySelectorAll('.url-input');
+    const videoIds = [];
+    
+    inputs.forEach(input => {
+      const val = input.value.trim();
+      if (val) {
+        const videoId = extractYoutubeId(val);
+        if (videoId) {
+          videoIds.push(videoId);
+        } else {
+          // Visual warning for invalid inputs
+          input.style.borderColor = 'var(--color-danger)';
+          setTimeout(() => {
+            input.style.borderColor = '';
+          }, 3000);
+        }
+      }
+    });
+
+    if (videoIds.length === 0) {
+      alert("Please enter at least one valid YouTube URL or 11-character Video ID.");
+      return;
+    }
+
+    // Hide empty state and show grid
+    emptyState.style.display = 'none';
+    gridContainer.style.display = 'grid';
+    badge.textContent = `${videoIds.length} Stream${videoIds.length > 1 ? 's' : ''}`;
+
+    // Adjust grid column classes depending on count
+    gridContainer.className = 'stream-grid';
+    if (videoIds.length === 1) {
+      gridContainer.classList.add('cols-1');
+    } else if (videoIds.length === 2) {
+      gridContainer.classList.add('cols-2');
+    }
+
+    // Retrieve global mute state
+    const muteCheckbox = document.getElementById('global-mute-checkbox');
+    const startMuted = muteCheckbox ? muteCheckbox.checked : false;
+
+    // Build player DOM elements and instantiate YT.Player
+    videoIds.forEach((id, index) => {
+      const playerId = `yt-player-${index}`;
+      
+      // Create wrapper element
+      const wrapper = document.createElement('div');
+      wrapper.className = 'video-wrapper';
+      
+      const playerDiv = document.createElement('div');
+      playerDiv.id = playerId;
+      
+      wrapper.appendChild(playerDiv);
+      gridContainer.appendChild(wrapper);
+
+      // Create new YT.Player
+      const player = new YT.Player(playerId, {
+        videoId: id,
+        playerVars: {
+          'autoplay': 1,
+          'mute': startMuted ? 1 : 0,
+          'controls': 1,
+          'rel': 0,
+          'modestbranding': 1
+        },
+        events: {
+          'onReady': (event) => {
+            // Auto play on load (modern browsers require mute if autoplaying)
+            event.target.playVideo();
+          }
         }
       });
-    }, { threshold: 0.3 });
 
-    counterObserver.observe(statsSection);
+      activePlayers.push(player);
+    });
+
+    // Smooth scroll to workspace
+    document.getElementById('stream-workspace').scrollIntoView({ behavior: 'smooth' });
+  });
+}
+
+// Clean up player instances to prevent leaks and blank wrappers
+function destroyActivePlayers() {
+  activePlayers.forEach(player => {
+    try {
+      if (player && typeof player.destroy === 'function') {
+        player.destroy();
+      }
+    } catch (err) {
+      console.error("Error destroying YT player instance:", err);
+    }
+  });
+  
+  activePlayers = [];
+  
+  const gridContainer = document.getElementById('grid-container');
+  if (gridContainer) {
+    gridContainer.innerHTML = '';
   }
 }
 
 /**
- * 7. Video Lightbox Modal Control
+ * 6. Global Mute Synchronizer
  */
-function initVideoModal() {
-  const modal = document.getElementById('video-lightbox');
-  const iframe = document.getElementById('modal-player');
-  const closeBtn = document.getElementById('modal-close-btn');
-  const triggerButtons = document.querySelectorAll('[data-video-id]');
+function initMuteSync() {
+  const muteCheckbox = document.getElementById('global-mute-checkbox');
+  if (!muteCheckbox) return;
 
-  const openModal = (videoId) => {
-    if (!modal || !iframe) return;
-    // Embed URL formatting with autoplay parameters
-    const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`;
-    iframe.setAttribute('src', embedUrl);
-    modal.classList.add('active');
-    modal.setAttribute('aria-hidden', 'false');
-    document.body.style.overflow = 'hidden'; // Lock background scroll
-  };
-
-  const closeModal = () => {
-    if (!modal || !iframe) return;
-    modal.classList.remove('active');
-    modal.setAttribute('aria-hidden', 'true');
-    iframe.setAttribute('src', ''); // Stop playback
-    document.body.style.overflow = ''; // Restore scroll
-  };
-
-  // Bind to all watch/play triggers
-  triggerButtons.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const videoId = btn.getAttribute('data-video-id') || 'dQw4w9WgXcQ';
-      openModal(videoId);
+  muteCheckbox.addEventListener('change', () => {
+    const isMuted = muteCheckbox.checked;
+    
+    activePlayers.forEach(player => {
+      try {
+        if (player && typeof player.mute === 'function') {
+          if (isMuted) {
+            player.mute();
+          } else {
+            player.unMute();
+          }
+        }
+      } catch (err) {
+        console.error("Failed to toggle player mute state:", err);
+      }
     });
   });
-
-  if (closeBtn) {
-    closeBtn.addEventListener('click', closeModal);
-  }
-
-  // Click outside to close modal
-  if (modal) {
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) {
-        closeModal();
-      }
-    });
-
-    // ESC key close support
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && modal.classList.contains('active')) {
-        closeModal();
-      }
-    });
-  }
-}
-
-/**
- * 8. Newsletter Email Form Simulation
- */
-function initNewsletterForm() {
-  const form = document.getElementById('newsletter-email-form');
-  const input = document.getElementById('newsletter-email-input');
-  const feedback = document.getElementById('newsletter-feedback');
-
-  if (form && input && feedback) {
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      
-      const email = input.value.trim();
-      
-      // Simple UI loader simulation
-      feedback.className = 'form-feedback';
-      feedback.textContent = 'Submitting...';
-      feedback.style.display = 'block';
-      
-      setTimeout(() => {
-        if (validateEmail(email)) {
-          // Log locally
-          saveSubscriberLocal(email);
-          
-          feedback.textContent = 'Welcome to the Club! Check your inbox for secret updates.';
-          feedback.classList.add('success');
-          form.reset();
-        } else {
-          feedback.textContent = 'Please enter a valid email address.';
-          feedback.classList.add('error');
-        }
-      }, 800);
-    });
-  }
-
-  function validateEmail(email) {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(email.toLowerCase());
-  }
-
-  function saveSubscriberLocal(email) {
-    try {
-      let subscribers = JSON.parse(localStorage.getItem('creators_club_subscribers')) || [];
-      if (!subscribers.includes(email)) {
-        subscribers.push(email);
-        localStorage.setItem('creators_club_subscribers', JSON.stringify(subscribers));
-      }
-      console.log('Successfully subscribed:', email);
-      console.log('All local subscribers:', subscribers);
-    } catch (e) {
-      console.error('Failed to log subscriber locally', e);
-    }
-  }
 }
